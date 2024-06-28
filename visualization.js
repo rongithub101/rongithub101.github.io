@@ -1,4 +1,3 @@
-// Parameters
 const params = {
     scene: 1,
     data: null,
@@ -19,7 +18,8 @@ function setupScenes() {
         .attr('x', 50)
         .attr('y', 50)
         .text('Paddle Data Market Overview')
-        .style('font-size', '24px');
+        .style('font-size', '24px')
+        .style('fill', '#00796b');
 
     // Scene 2: Trends
     const scene2 = d3.select('#scene2');
@@ -28,7 +28,8 @@ function setupScenes() {
         .attr('x', 50)
         .attr('y', 50)
         .text('Key Trends and Statistics')
-        .style('font-size', '24px');
+        .style('font-size', '24px')
+        .style('fill', '#00796b');
 
     // Scene 3: Detailed Data
     const scene3 = d3.select('#scene3');
@@ -37,7 +38,8 @@ function setupScenes() {
         .attr('x', 50)
         .attr('y', 50)
         .text('Detailed Data by Attribute')
-        .style('font-size', '24px');
+        .style('font-size', '24px')
+        .style('fill', '#00796b');
 
     // Interactive Exploration
     const explore = d3.select('#explore');
@@ -46,7 +48,8 @@ function setupScenes() {
         .attr('x', 50)
         .attr('y', 50)
         .text('Explore Data Interactively')
-        .style('font-size', '24px');
+        .style('font-size', '24px')
+        .style('fill', '#00796b');
 
     // Event Listeners for User Interaction
     d3.select('#scene1').on('click', () => { params.scene = 2; updateScene(); });
@@ -80,7 +83,8 @@ function renderOverview() {
         .attr('x', 50)
         .attr('y', 100)
         .text('An overview of the paddle market, including trends in price, brand, and types.')
-        .style('font-size', '18px');
+        .style('font-size', '18px')
+        .style('fill', '#d32f2f');
 }
 
 function renderTrends() {
@@ -91,7 +95,8 @@ function renderTrends() {
         .attr('x', 50)
         .attr('y', 100)
         .text('Key Trends in Paddle Market:')
-        .style('font-size', '18px');
+        .style('font-size', '18px')
+        .style('fill', '#d32f2f');
 
     const annotations = [
         {
@@ -121,7 +126,8 @@ function renderDetails() {
         .attr('x', 50)
         .attr('y', 100)
         .text('Detailed Data by Attribute:')
-        .style('font-size', '18px');
+        .style('font-size', '18px')
+        .style('fill', '#d32f2f');
 
     // Example detailed data visualization
     const data = params.data;
@@ -130,7 +136,8 @@ function renderDetails() {
             .attr('x', 50)
             .attr('y', 150 + i * 50)
             .text(`Paddle: ${d['Paddle Name']}, Brand: ${d['Brand']}, Price: ${d['Price']}`)
-            .style('font-size', '16px');
+            .style('font-size', '16px')
+            .style('fill', '#1976d2');
     });
 }
 
@@ -142,7 +149,8 @@ function renderExploration() {
         .attr('x', 50)
         .attr('y', 100)
         .text('Explore Data Interactively:')
-        .style('font-size', '18px');
+        .style('font-size', '18px')
+        .style('fill', '#d32f2f');
 
     // Add interactive elements like dropdowns, sliders, and charts here
 }
