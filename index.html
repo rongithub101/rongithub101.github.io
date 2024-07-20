@@ -3,19 +3,796 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paddle Data Narrative Visualization</title>
-    <script src="https://d3js.org/d3.v6.min.js"></script>
-    <script src="https://d3-annotation.susielu.com/v2/d3-annotation.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <title>Netflix Data Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+    
+        #visualization-container {
+            width: 1200px;
+            height: 800px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+    
+        #slide-container {
+            flex-grow: 1;
+            padding: 20px;
+            overflow: auto;
+        }
+    
+        #navigation {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+        }
+    
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    
+        .hidden {
+            display: none;
+        }
+    
+        #sunburst {
+            width: 100%;
+            height: 100%;
+        }
+    
+        .tooltip {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            padding: 10px;
+            pointer-events: none;
+        }
+    
+        svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
 </head>
 <body>
-    <div id="container">
-        <div id="scene1" class="scene visible"></div>
-        <div id="scene2" class="scene"></div>
-        <div id="scene3" class="scene"></div>
-        <div id="explore" class="scene"></div>
+    <div id="visualization-container">
+        <div id="slide-container"></div>
+        <div id="navigation">
+            <button id="prev-btn">Previous</button>
+            <button id="next-btn">Next</button>
+        </div>
     </div>
+    <script>
+        // Load the data
+        d3.csv("netfix_cleaned.csv").then(data => {
+            createVisualization(data);
+        }).catch(error => {
+            console.error('Error loading the CSV file:', error);
+        });
 
-    <script src="visualization.js"></script>
+    function createVisualization(data) {
+    const slides = [
+        { id: "slide1", title: "Netflix Content Overview", render: renderOverview },
+        { id: "slide2", title: "Movie Moods by Year", render: renderMoodDistribution },
+        { id: "slide3", title: "Content Distribution by Ratings", render: renderTypeDistribution }
+    ];
+
+    let currentSlideIndex = 0;
+
+    function renderSlide(index) {
+        const slide = slides[index];
+        const container = d3.select("#slide-container");
+        container.html(""); // Clear previous content
+        container.append("h2").text(slide.title);
+        slide.render(container, data);
+
+        // Update button states
+        updateButtonStates(index);
+    }
+
+        function updateButtonStates(index) {
+            d3.select("#prev-btn")
+                .attr("disabled", index === 0 ? true : null)
+                .style("opacity", index === 0 ? 0.5 : 1)
+                .style("cursor", index === 0 ? "default" : "pointer");
+
+            d3.select("#next-btn")
+                .attr("disabled", index === slides.length - 1 ? true : null)
+                .style("opacity", index === slides.length - 1 ? 0.5 : 1)
+                .style("cursor", index === slides.length - 1 ? "default" : "pointer");
+        }
+
+        renderSlide(currentSlideIndex);
+
+        d3.select("#prev-btn").on("click", function() {
+            if (currentSlideIndex > 0) {
+                currentSlideIndex--;
+                renderSlide(currentSlideIndex);
+            }
+        });
+
+        d3.select("#next-btn").on("click", function() {
+            if (currentSlideIndex < slides.length - 1) {
+                currentSlideIndex++;
+                renderSlide(currentSlideIndex);
+            }
+        });
+    }
+
+        function renderOverview(container, data) {
+            const totalTitles = data.length;
+            const yearsExtent = d3.extent(data, d => +d.release_year);
+            const uniqueMaturityRatings = [...new Set(data.map(d => d.maturity_rating))];
+        
+            container.append("p").text(`Total number of titles: ${totalTitles}`);
+            container.append("p").text(`Release years range: ${yearsExtent[0]} - ${yearsExtent[1]}`);
+            container.append("p").text(`Available maturity ratings: ${uniqueMaturityRatings.join(", ")}`);
+        
+            // Create year slider
+            const sliderContainer = container.append("div").attr("class", "slider-container");
+            sliderContainer.append("span").text("Select Year: ");
+            const slider = sliderContainer.append("input")
+                .attr("type", "range")
+                .attr("min", yearsExtent[0])
+                .attr("max", yearsExtent[1])
+                .attr("value", yearsExtent[1])
+                .attr("step", 1);
+            const yearDisplay = sliderContainer.append("span").text(yearsExtent[1]);
+        
+            // Create SVG for the bubble chart
+            const margin = {top: 50, right: 50, bottom: 50, left: 50};
+            const width = 1100 - margin.left - margin.right;
+            const height = 700 - margin.top - margin.bottom;
+        
+            const svg = container.append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+        
+            // Add tooltip div
+            const tooltip = container.append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute")
+                .style("background-color", "white")
+                .style("border", "solid")
+                .style("border-width", "1px")
+                .style("border-radius", "5px")
+                .style("padding", "5px");
+        
+            // Function to group similar genres
+            function groupGenres(genres) {
+                const groups = {};
+                genres.forEach(genre => {
+                    const words = genre.split(/\s+/);
+                    let grouped = false;
+                    for (let i = 0; i < words.length; i++) {
+                        const word = words[i].toLowerCase();
+                        if (groups[word]) {
+                            groups[word].push(genre);
+                            grouped = true;
+                            break;
+                        }
+                    }
+                    if (!grouped) {
+                        groups[words[0].toLowerCase()] = [genre];
+                    }
+                });
+                return Object.values(groups);
+            }
+        
+            // Function to update the chart
+            function updateChart(year) {
+                const filteredData = data.filter(d => +d.release_year === year);
+                const genreCounts = d3.rollup(filteredData, v => v.length, d => d.genre);
+                const sortedGenres = Array.from(genreCounts, ([genre, count]) => ({genre, count}))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 20);  // Increased to 20 to show more genres
+        
+                const groupedGenres = groupGenres(sortedGenres.map(d => d.genre));
+                const groupedData = groupedGenres.map(group => ({
+                    genre: group.join(', '),
+                    count: group.reduce((sum, genre) => sum + genreCounts.get(genre), 0)
+                })).sort((a, b) => b.count - a.count);
+        
+                // Create a color scale
+                const color = d3.scaleOrdinal(d3.schemeCategory10);
+        
+                // Create a size scale for bubbles
+                const size = d3.scaleLinear()
+                    .domain([0, d3.max(groupedData, d => d.count)])
+                    .range([10, 70]);  // min and max bubble radius
+        
+                // Create a force simulation
+                const simulation = d3.forceSimulation(groupedData)
+                    .force("x", d3.forceX(width / 2).strength(0.05))
+                    .force("y", d3.forceY(height / 2).strength(0.05))
+                    .force("collide", d3.forceCollide(d => size(d.count) + 2));
+        
+                // Remove old elements
+                svg.selectAll(".bubble").remove();
+        
+                // Create bubble elements
+                const bubbles = svg.selectAll(".bubble")
+                    .data(groupedData)
+                    .enter()
+                    .append("circle")
+                    .attr("class", "bubble")
+                    .attr("r", d => size(d.count))
+                    .attr("fill", (d, i) => color(i))
+                    .attr("stroke", "white")
+                    .attr("stroke-width", 2)
+                    .on("mouseover", function(event, d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                        tooltip.html(d.genre + "<br/>" + d.count + " titles")
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function(d) {
+                        tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0);
+                    });
+        
+                // Update bubble positions on each tick of the simulation
+                simulation.on("tick", () => {
+                    bubbles
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y);
+                });
+        
+                // Update chart title
+                svg.selectAll(".chart-title").remove();
+                svg.append("text")
+                    .attr("class", "chart-title")
+                    .attr("x", width / 2)
+                    .attr("y", 0 - (margin.top / 2))
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "24px")
+                    .style("font-weight", "bold")
+                    .text(`Genre Groups in ${year}`);
+            }
+        
+            // Initial chart render
+            updateChart(yearsExtent[1]);
+        
+            // Update chart when slider changes
+            slider.on("input", function() {
+                const selectedYear = +this.value;
+                yearDisplay.text(selectedYear);
+                updateChart(selectedYear);
+            });
+        
+    
+
+        }
+
+        function renderMoodDistribution(container, data) {
+            const totalTitles = data.length;
+            const yearsExtent = d3.extent(data, d => +d.release_year);
+        
+            container.append("p").text("Drag the slider to select the year and hover over the circles to see the most popular moods of that year!");
+        
+            // Create year slider
+            const sliderContainer = container.append("div").attr("class", "slider-container");
+            sliderContainer.append("span").text("Select Year: ");
+            const slider = sliderContainer.append("input")
+                .attr("type", "range")
+                .attr("min", yearsExtent[0])
+                .attr("max", yearsExtent[1])
+                .attr("value", yearsExtent[1])
+                .attr("step", 1);
+            const yearDisplay = sliderContainer.append("span").text(yearsExtent[1]);
+        
+            // Create SVG for the bubble chart
+            const margin = {top: 50, right: 50, bottom: 50, left: 50};
+            const width = 1100 - margin.left - margin.right;
+            const height = 700 - margin.top - margin.bottom;
+        
+            const svg = container.append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+        
+            // Add tooltip div
+            const tooltip = container.append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute")
+                .style("background-color", "white")
+                .style("border", "solid")
+                .style("border-width", "1px")
+                .style("border-radius", "5px")
+                .style("padding", "5px");
+        
+            // Create a color scale based on moods
+            const moodColorScale = d3.scaleOrdinal()
+                .domain([
+                    "adrenaline rush", "bittersweet", "charming", "chilling", "dark", 
+                    "emotional", "exciting", "feeling good", "goofy", "gritty", 
+                    "heart felt", "inspiring", "intimate", "mind bending", "off beat", 
+                    "ominous", "provocative", "quirky", "witty", "violent", 
+                    "understated", "swoonworthy", "suspenseful", "steamy", "sentimental", 
+                    "scary", "romantic"
+                ])
+                .range([
+                    "#FF4500", "#FFA07A", "#FFB6C1", "#4682B4", "#2F4F4F", 
+                    "#DDA0DD", "#FF6347", "#98FB98", "#FFD700", "#696969", 
+                    "#DB7093", "#87CEEB", "#F08080", "#9932CC", "#BDB76B", 
+                    "#483D8B", "#8B0000", "#00CED1", "#F4A460", "#8B0000", 
+                    "#778899", "#FF69B4", "#4B0082", "#FF1493", "#FFA500", 
+                    "#191970", "#FF69B4"
+                ]);
+        
+            // Function to normalize mood string
+            function normalizeMood(mood) {
+                return mood.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+            }
+        
+            // Function to get color based on normalized mood
+            function getMoodColor(mood) {
+                const normalizedMood = normalizeMood(mood);
+                return moodColorScale(normalizedMood) || "#CCCCCC"; // Default color if not found
+            }
+        
+            // Function to update the chart
+            function updateChart(year) {
+                const filteredData = data.filter(d => +d.release_year === year);
+                const moodCounts = d3.rollup(filteredData, v => v.length, d => normalizeMood(d.mood));
+                const sortedMoods = Array.from(moodCounts, ([mood, count]) => ({mood, count}))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 20);  // Show top 20 moods
+        
+                // Create a size scale for bubbles
+                const size = d3.scaleLinear()
+                    .domain([0, d3.max(sortedMoods, d => d.count)])
+                    .range([10, 70]);  // min and max bubble radius
+        
+                // Create a force simulation
+                const simulation = d3.forceSimulation(sortedMoods)
+                    .force("x", d3.forceX(width / 2).strength(0.05))
+                    .force("y", d3.forceY(height / 2).strength(0.05))
+                    .force("collide", d3.forceCollide(d => size(d.count) + 2));
+        
+                // Remove old elements
+                svg.selectAll(".bubble").remove();
+        
+                // Create bubble elements
+                const bubbles = svg.selectAll(".bubble")
+                    .data(sortedMoods)
+                    .enter()
+                    .append("circle")
+                    .attr("class", "bubble")
+                    .attr("r", d => size(d.count))
+                    .attr("fill", d => getMoodColor(d.mood))
+                    .attr("stroke", "white")
+                    .attr("stroke-width", 2)
+                    .on("mouseover", function(event, d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                        tooltip.html(d.mood + "<br/>" + d.count + " titles")
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function(d) {
+                        tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0);
+                    });
+        
+                // Update bubble positions on each tick of the simulation
+                simulation.on("tick", () => {
+                    bubbles
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y);
+                });
+        
+                // Update chart title
+                svg.selectAll(".chart-title").remove();
+                svg.append("text")
+                    .attr("class", "chart-title")
+                    .attr("x", width / 2)
+                    .attr("y", 0 - (margin.top / 2))
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "24px")
+                    .style("font-weight", "bold")
+                    .text(`Movie Moods in ${year}`);
+        
+                // Add a legend
+                const legendData = moodColorScale.domain();
+                const legendWidth = 200;
+                const legendHeight = 20 * legendData.length;
+        
+                svg.selectAll(".legend").remove();
+        
+                const legend = svg.selectAll(".legend")
+                    .data(legendData)
+                    .enter().append("g")
+                    .attr("class", "legend")
+                    .attr("transform", (d, i) => `translate(${width - legendWidth},${i * 20})`);
+        
+                legend.append("rect")
+                    .attr("width", 18)
+                    .attr("height", 18)
+                    .style("fill", moodColorScale);
+        
+                legend.append("text")
+                    .attr("x", 24)
+                    .attr("y", 9)
+                    .attr("dy", ".35em")
+                    .style("text-anchor", "start")
+                    .text(d => d);
+            }
+        
+            // Initial chart render
+            updateChart(yearsExtent[1]);
+        
+            // Update chart when slider changes
+            slider.on("input", function() {
+                const selectedYear = +this.value;
+                yearDisplay.text(selectedYear);
+                updateChart(selectedYear);
+            });
+        }
+        
+
+        function renderTypeDistribution(container, data) {
+            const width = 800;
+    const height = 500;
+
+    // Define the color scale with specific colors
+    const colorScale = d3.scaleOrdinal()
+        .domain(["A", "U", "U/A 13+", "U/A 16+", "U/A 7+"])
+        .range(["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]);
+
+    const pack = data => d3.pack()
+        .size([width, height])
+        .padding(3)
+        (d3.hierarchy(data)
+            .sum(d => d.value)
+            .sort((a, b) => b.value - a.value));
+
+    const root = pack(processRatingData(data));
+
+    let focus = root;
+    let view;
+
+    const svg = container.append("svg")
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .style("display", "block")
+        .style("margin", "0 -14px")
+        .style("background", "#f7f7f7")
+        .style("cursor", "pointer")
+        .call(d3.zoom().on("zoom", (event) => {
+            svg.attr("transform", event.transform);
+        }))
+        .append("g");
+
+    const node = svg.append("g")
+        .selectAll("circle")
+        .data(root.descendants().slice(1))
+        .join("circle")
+        .attr("fill", d => d.children ? colorScale(d.data.name) : "white")
+        .attr("pointer-events", d => !d.children ? "none" : null)
+        .on("mouseover", function(event, d) { 
+            d3.select(this).attr("stroke", "#000"); 
+            showTooltip(event, d);
+        })
+        .on("mouseout", function() { 
+            d3.select(this).attr("stroke", null); 
+            hideTooltip();
+        })
+        .on("click", (event, d) => focus !== d && (zoom(event, d), event.stopPropagation()));
+        
+            const label = svg.append("g")
+                .style("font", "10px sans-serif")
+                .attr("pointer-events", "none")
+                .attr("text-anchor", "middle")
+                .selectAll("text")
+                .data(root.descendants())
+                .join("text")
+                .style("fill-opacity", d => d.parent === root ? 1 : 0)
+                .style("display", d => d.parent === root ? "inline" : "none")
+                .text(d => d.data.name)
+                .attr("dy", "0.3em");
+        
+            const tooltip = container.append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute")
+                .style("background-color", "white")
+                .style("border", "1px solid #ddd")
+                .style("padding", "10px")
+                .style("border-radius", "5px");
+        
+        const legendSvg = container.append("svg")
+        .attr("width", 200)
+        .attr("height", 300)
+        .style("position", "absolute")
+        .style("top", "10px")
+        .style("right", "10px");
+
+    
+
+        const legendData1 = colorScale.domain();
+        
+        const colorScale1 = d3.scaleOrdinal()
+        .domain(["A", "U", "U/A 13+", "U/A 16+", "U/A 7+"])
+        .range(["#d62728", "#9467bd", "#ff7f0e", "#2ca02c", "#1f77b4"]);
+
+        // Ensure unique values in legendData
+        const legendData = Array.from(new Set(colorScale1.domain()));
+
+        const legend = legendSvg.append("g")
+        .attr("class", "legend")
+        .attr("transform", "translate(10,20)");
+        // Create legend rectangles
+        legend.selectAll("rect")
+            .data(legendData)
+            .enter()
+            .append("rect")
+            .attr("x", 0)
+            .attr("y", (d, i) => i * 20)
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("fill", d => colorScale1(d));
+
+        // Create legend text
+        legend.selectAll("text")
+            .data(legendData)
+            .enter()
+            .append("text")
+            .attr("x", 20)
+            .attr("y", (d, i) => i * 20 + 9)
+            .text(d => d)
+            .attr("alignment-baseline", "middle");
+
+        legend.append("text")
+            .attr("x", 0)
+            .attr("y", -10)
+            .text("Ratings")
+            .attr("font-size", "14px")
+            .attr("font-weight", "bold");
+            const note = legendSvg.append("g")
+        .attr("transform", `translate(10, ${legendData.length * 20 + 50})`);
+
+        note.append("text")
+            .attr("x", 0)
+            .attr("y", 0)
+            .text("Note:")
+            .attr("font-weight", "bold")
+            .attr("font-size", "16px");
+
+        note.append("text")
+            .attr("x", 0)
+            .attr("y", 20)
+            .text("Select each rating circle to")
+            .attr("font-size", "12px");
+
+        note.append("text")
+            .attr("x", 0)
+            .attr("y", 40)
+            .text("see all movies with that rating.")
+            .attr("font-size", "12px");
+
+        note.append("text")
+            .attr("x", 0)
+            .attr("y", 60)
+            .text("Zoom in/out with mouse wheel.")
+            .attr("font-size", "12px");
+
+        note.append("text")
+            .attr("x", 0)
+            .attr("y", 80)
+            .text("Pan by dragging the mouse.")
+            .attr("font-size", "12px");
+        
+            zoomTo([root.x, root.y, root.r * 2]);
+        
+            function zoomTo(v) {
+                const k = width / v[2];
+        
+                view = v;
+        
+                label.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
+                     .attr("font-size", d => Math.min(2 * d.r * k / (d.data.name.length), d.children ? 10 : 8) + "px");
+        
+                node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
+                    .attr("r", d => d.r * k);
+            }
+        
+            function zoom(event, d) {
+                const focus0 = focus;
+                focus = d;
+        
+                const transition = svg.transition()
+                    .duration(event.altKey ? 7500 : 750)
+                    .tween("zoom", d => {
+                        const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
+                        return t => zoomTo(i(t));
+                    });
+        
+                label
+                    .filter(function(d) { return d.parent === focus || this.style.display === "inline"; })
+                    .transition(transition)
+                    .style("fill-opacity", d => d.parent === focus || !d.children ? 1 : 0)
+                    .on("start", function(d) { if (d.parent === focus || !d.children) this.style.display = "inline"; })
+                    .on("end", function(d) { if (d.parent !== focus && d.children) this.style.display = "none"; });
+            }
+        
+            function showTooltip(event, d) {
+                if (!d.children) {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                    tooltip.html(`<strong>${d.data.title}</strong><br>
+                                  Genre: ${d.data.genre}<br>
+                                  Description: ${d.data.description}`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                }
+            }
+        
+            function hideTooltip() {
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            }
+        }
+        
+        function processRatingData(data) {
+            const ratingHierarchy = { name: "Ratings", children: [] };
+            const ratingMap = new Map();
+        
+            data.forEach(item => {
+                const rating = item.maturity_rating;
+                if (!ratingMap.has(rating)) {
+                    ratingMap.set(rating, { name: rating, children: [] });
+                    ratingHierarchy.children.push(ratingMap.get(rating));
+                }
+        
+                ratingMap.get(rating).children.push({
+                    name: item.names,
+                    title: item.names,
+                    genre: item.genre,
+                    description: item.description,
+                    value: 1
+                });
+            });
+        
+            return ratingHierarchy;
+        }
+
+        function renderGenreSunburst(container, data) {
+            const width = 600;
+            const height = 600;
+            const radius = Math.min(width, height) / 2;
+
+            const svg = container.append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .append("g")
+                .attr("transform", `translate(${width / 2},${height / 2})`);
+
+            const partition = d3.partition()
+                .size([2 * Math.PI, radius]);
+
+            const root = d3.hierarchy({ children: processGenreData(data) })
+                .sum(d => d.value);
+
+            const color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, root.children.length + 1));
+
+            partition(root);
+
+            const arc = d3.arc()
+                .startAngle(d => d.x0)
+                .endAngle(d => d.x1)
+                .innerRadius(d => d.y0)
+                .outerRadius(d => d.y1);
+
+            svg.selectAll("path")
+                .data(root.descendants())
+                .enter()
+                .append("path")
+                .attr("d", arc)
+                .style("fill", d => color(d.data.name))
+                .style("opacity", 0.8)
+                .on("mouseover", (event, d) => {
+                    d3.select(event.currentTarget).style("opacity", 1);
+                    showTooltip(event, d);
+                })
+                .on("mouseout", (event, d) => {
+                    d3.select(event.currentTarget).style("opacity", 0.8);
+                    hideTooltip();
+                });
+
+            svg.selectAll("text")
+                .data(root.descendants().filter(d => d.depth && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03))
+                .enter()
+                .append("text")
+                .attr("transform", d => {
+                    const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
+                    const y = (d.y0 + d.y1) / 2;
+                    return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
+                })
+                .attr("dy", "0.35em")
+                .text(d => d.data.name);
+
+            // Add annotations
+            const annotations = [
+                {
+                    note: {
+                        label: "Dramas are the most common genre",
+                        title: "Genre Distribution"
+                    },
+                    x: 0,
+                    y: -radius / 2,
+                    dy: -50,
+                    dx: 50
+                }
+            ];
+
+            const makeAnnotations = d3.annotation()
+                .annotations(annotations);
+
+            svg.append("g")
+                .call(makeAnnotations);
+
+            // Tooltip
+            const tooltip = container.append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+
+            function showTooltip(event, d) {
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                tooltip.html(`${d.data.name}<br>${d.value} titles`)
+                    .style("left", (event.pageX) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            }
+
+            function hideTooltip() {
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            }
+        }
+
+        function processGenreData(data) {
+            const genreCounts = {};
+            data.forEach(item => {
+                const genres = JSON.parse(item.genre.replace(/'/g, '"'));
+                genres.forEach(genre => {
+                    if (!genreCounts[genre]) {
+                        genreCounts[genre] = 0;
+                    }
+                    genreCounts[genre]++;
+                });
+            });
+
+            return Object.entries(genreCounts).map(([name, value]) => ({ name, value }));
+        }
+    </script>
 </body>
 </html>
