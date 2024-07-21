@@ -20,7 +20,7 @@
     
         #visualization-container {
             width: 1200px;
-            height: 800px;
+            height: 900px;
             background-color: white;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -139,10 +139,13 @@
             const yearsExtent = d3.extent(data, d => +d.release_year);
             const uniqueMaturityRatings = [...new Set(data.map(d => d.maturity_rating))];
         
-            container.append("p").text(`Total number of titles: ${totalTitles}`);
+            container.append("p").text(`Are you curious too see what influences netflix to produce the movies it does today?`);
+            container.append("p").text(`You will get an hands on opportunity to play around with the factors that affect the movie production`);
             container.append("p").text(`Release years range: ${yearsExtent[0]} - ${yearsExtent[1]}`);
             container.append("p").text(`Available maturity ratings: ${uniqueMaturityRatings.join(", ")}`);
-        
+            container.append("p").text(`Now time for the fun part! Its your turn to explore how genres influence netflix `);
+            container.append("p").text(`Select the year below from the slider and see the most prominent genres of that year`);
+            container.append("p").text(`the bigger the circle, the more prominent that genre is, also make sure to hover over the circle to see the genre!`);
             // Create year slider
             const sliderContainer = container.append("div").attr("class", "slider-container");
             sliderContainer.append("span").text("Select Year: ");
@@ -165,7 +168,6 @@
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
         
-            // Add tooltip div
             const tooltip = container.append("div")
                 .attr("class", "tooltip")
                 .style("opacity", 0)
@@ -203,7 +205,7 @@
                 const genreCounts = d3.rollup(filteredData, v => v.length, d => d.genre);
                 const sortedGenres = Array.from(genreCounts, ([genre, count]) => ({genre, count}))
                     .sort((a, b) => b.count - a.count)
-                    .slice(0, 20);  // Increased to 20 to show more genres
+                    .slice(0, 20); 
         
                 const groupedGenres = groupGenres(sortedGenres.map(d => d.genre));
                 const groupedData = groupedGenres.map(group => ({
@@ -217,7 +219,7 @@
                 // Create a size scale for bubbles
                 const size = d3.scaleLinear()
                     .domain([0, d3.max(groupedData, d => d.count)])
-                    .range([10, 70]);  // min and max bubble radius
+                    .range([10, 70]); 
         
                 // Create a force simulation
                 const simulation = d3.forceSimulation(groupedData)
@@ -288,6 +290,9 @@
         function renderMoodDistribution(container, data) {
             const totalTitles = data.length;
             const yearsExtent = d3.extent(data, d => +d.release_year);
+            container.append("p").text(`Ever wonder why are movies soo sad or violent one year but fun and exciting in another?`);
+            container.append("p").text(`Now its your turn to explore! Look through all the years and see what are the most prominent moods! `);
+            container.append("p").text(`the bigger the circle, the more prominent that mood is, also make sure to hover over the circle to see the genre!`);
         
             container.append("p").text("Drag the slider to select the year and hover over the circles to see the most popular moods of that year!");
         
@@ -351,7 +356,7 @@
             // Function to get color based on normalized mood
             function getMoodColor(mood) {
                 const normalizedMood = normalizeMood(mood);
-                return moodColorScale(normalizedMood) || "#CCCCCC"; // Default color if not found
+                return moodColorScale(normalizedMood) || "#CCCCCC"; 
             }
         
             // Function to update the chart
@@ -360,12 +365,12 @@
                 const moodCounts = d3.rollup(filteredData, v => v.length, d => normalizeMood(d.mood));
                 const sortedMoods = Array.from(moodCounts, ([mood, count]) => ({mood, count}))
                     .sort((a, b) => b.count - a.count)
-                    .slice(0, 20);  // Show top 20 moods
+                    .slice(0, 20);  
         
                 // Create a size scale for bubbles
                 const size = d3.scaleLinear()
                     .domain([0, d3.max(sortedMoods, d => d.count)])
-                    .range([10, 70]);  // min and max bubble radius
+                    .range([10, 70]);  
         
                 // Create a force simulation
                 const simulation = d3.forceSimulation(sortedMoods)
@@ -458,341 +463,311 @@
 
         function renderTypeDistribution(container, data) {
             const width = 800;
-    const height = 500;
+            const height = 500;
 
-    // Define the color scale with specific colors
-    const colorScale = d3.scaleOrdinal()
-        .domain(["A", "U", "U/A 13+", "U/A 16+", "U/A 7+"])
-        .range(["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]);
+            // Define the color scale with specific colors
+            const colorScale = d3.scaleOrdinal()
+                .domain(["A", "U", "U/A 13+", "U/A 16+", "U/A 7+"])
+                .range(["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]);
 
-    const pack = data => d3.pack()
-        .size([width, height])
-        .padding(3)
-        (d3.hierarchy(data)
-            .sum(d => d.value)
-            .sort((a, b) => b.value - a.value));
+            const pack = data => d3.pack()
+                .size([width, height])
+                .padding(3)
+                (d3.hierarchy(data)
+                    .sum(d => d.value)
+                    .sort((a, b) => b.value - a.value));
 
-    const root = pack(processRatingData(data));
+            const root = pack(processRatingData(data));
+            container.append("p").text(`Select each rating circle to see all movies with that rating.`);
+            container.append("p").text(`Zoom in/out with mouse wheel and pan by dragging the mouse.`);
+            
 
-    let focus = root;
-    let view;
+            let focus = root;
+            let view;
 
-    const svg = container.append("svg")
-        .attr("viewBox", `0 0 ${width} ${height}`)
-        .style("display", "block")
-        .style("margin", "0 -14px")
-        .style("background", "#f7f7f7")
-        .style("cursor", "pointer")
-        .call(d3.zoom().on("zoom", (event) => {
-            svg.attr("transform", event.transform);
-        }))
-        .append("g");
+            const svg = container.append("svg")
+                .attr("viewBox", `0 0 ${width} ${height}`)
+                .style("display", "block")
+                .style("margin", "0 -14px")
+                .style("background", "#f7f7f7")
+                .style("cursor", "pointer")
+                .call(d3.zoom().on("zoom", (event) => {
+                    svg.attr("transform", event.transform);
+                }))
+                .append("g");
 
-    const node = svg.append("g")
-        .selectAll("circle")
-        .data(root.descendants().slice(1))
-        .join("circle")
-        .attr("fill", d => d.children ? colorScale(d.data.name) : "white")
-        .attr("pointer-events", d => !d.children ? "none" : null)
-        .on("mouseover", function(event, d) { 
-            d3.select(this).attr("stroke", "#000"); 
-            showTooltip(event, d);
-        })
-        .on("mouseout", function() { 
-            d3.select(this).attr("stroke", null); 
-            hideTooltip();
-        })
-        .on("click", (event, d) => focus !== d && (zoom(event, d), event.stopPropagation()));
-        
-            const label = svg.append("g")
-                .style("font", "10px sans-serif")
-                .attr("pointer-events", "none")
-                .attr("text-anchor", "middle")
-                .selectAll("text")
-                .data(root.descendants())
-                .join("text")
-                .style("fill-opacity", d => d.parent === root ? 1 : 0)
-                .style("display", d => d.parent === root ? "inline" : "none")
-                .text(d => d.data.name)
-                .attr("dy", "0.3em");
-        
-            const tooltip = container.append("div")
-                .attr("class", "tooltip")
-                .style("opacity", 0)
+            const node = svg.append("g")
+                .selectAll("circle")
+                .data(root.descendants().slice(1))
+                .join("circle")
+                .attr("fill", d => d.children ? colorScale(d.data.name) : "white")
+                .attr("pointer-events", d => !d.children ? "none" : null)
+                .on("mouseover", function(event, d) { 
+                    d3.select(this).attr("stroke", "#000"); 
+                    showTooltip(event, d);
+                })
+                .on("mouseout", function() { 
+                    d3.select(this).attr("stroke", null); 
+                    hideTooltip();
+                })
+                .on("click", (event, d) => focus !== d && (zoom(event, d), event.stopPropagation()));
+                
+                    const label = svg.append("g")
+                        .style("font", "bold 12px sans-serif")
+                        .attr("pointer-events", "none")
+                        .attr("text-anchor", "middle")
+                        .selectAll("text")
+                        .data(root.descendants())
+                        .join("text")
+                        .style("fill-opacity", d => d.parent === root ? 1 : 0)
+                        .style("display", d => d.parent === root ? "inline" : "none")
+                        .text(d => d.data.name)
+                        .attr("dy", "0.3em");
+                
+                    const tooltip = container.append("div")
+                        .attr("class", "tooltip")
+                        .style("opacity", 0)
+                        .style("position", "absolute")
+                        .style("background-color", "white")
+                        .style("border", "1px solid #ddd")
+                        .style("padding", "10px")
+                        .style("border-radius", "5px");
+                
+                const legendSvg = container.append("svg")
+                .attr("width", 200)
+                .attr("height", 300)
                 .style("position", "absolute")
-                .style("background-color", "white")
-                .style("border", "1px solid #ddd")
-                .style("padding", "10px")
-                .style("border-radius", "5px");
-        
-        const legendSvg = container.append("svg")
-        .attr("width", 200)
-        .attr("height", 300)
-        .style("position", "absolute")
-        .style("top", "10px")
-        .style("right", "10px");
+                .style("top", "10px")
+                .style("right", "10px");
 
-    
+            
 
-        const legendData1 = colorScale.domain();
-        
-        const colorScale1 = d3.scaleOrdinal()
-        .domain(["A", "U", "U/A 13+", "U/A 16+", "U/A 7+"])
-        .range(["#d62728", "#9467bd", "#ff7f0e", "#2ca02c", "#1f77b4"]);
+                const legendData1 = colorScale.domain();
+                
+                const colorScale1 = d3.scaleOrdinal()
+                .domain(["A", "U", "U/A 13+", "U/A 16+", "U/A 7+"])
+                .range(["#d62728", "#9467bd", "#ff7f0e", "#2ca02c", "#1f77b4"]);
 
-        // Ensure unique values in legendData
-        const legendData = Array.from(new Set(colorScale1.domain()));
+                // Ensure unique values in legendData
+                const legendData = Array.from(new Set(colorScale1.domain()));
 
-        const legend = legendSvg.append("g")
-        .attr("class", "legend")
-        .attr("transform", "translate(10,20)");
-        // Create legend rectangles
-        legend.selectAll("rect")
-            .data(legendData)
-            .enter()
-            .append("rect")
-            .attr("x", 0)
-            .attr("y", (d, i) => i * 20)
-            .attr("width", 15)
-            .attr("height", 15)
-            .attr("fill", d => colorScale1(d));
+                const legend = legendSvg.append("g")
+                .attr("class", "legend")
+                .attr("transform", "translate(10,20)");
+                // Create legend rectangles
+                legend.selectAll("rect")
+                    .data(legendData)
+                    .enter()
+                    .append("rect")
+                    .attr("x", 0)
+                    .attr("y", (d, i) => i * 20)
+                    .attr("width", 15)
+                    .attr("height", 15)
+                    .attr("fill", d => colorScale1(d));
 
-        // Create legend text
-        legend.selectAll("text")
-            .data(legendData)
-            .enter()
-            .append("text")
-            .attr("x", 20)
-            .attr("y", (d, i) => i * 20 + 9)
-            .text(d => d)
-            .attr("alignment-baseline", "middle");
+                // Create legend text
+                legend.selectAll("text")
+                    .data(legendData)
+                    .enter()
+                    .append("text")
+                    .attr("x", 20)
+                    .attr("y", (d, i) => i * 20 + 9)
+                    .text(d => d)
+                    .attr("alignment-baseline", "middle");
 
-        legend.append("text")
-            .attr("x", 0)
-            .attr("y", -10)
-            .text("Ratings")
-            .attr("font-size", "14px")
-            .attr("font-weight", "bold");
-            const note = legendSvg.append("g")
-        .attr("transform", `translate(10, ${legendData.length * 20 + 50})`);
-
-        note.append("text")
-            .attr("x", 0)
-            .attr("y", 0)
-            .text("Note:")
-            .attr("font-weight", "bold")
-            .attr("font-size", "16px");
-
-        note.append("text")
-            .attr("x", 0)
-            .attr("y", 20)
-            .text("Select each rating circle to")
-            .attr("font-size", "12px");
-
-        note.append("text")
-            .attr("x", 0)
-            .attr("y", 40)
-            .text("see all movies with that rating.")
-            .attr("font-size", "12px");
-
-        note.append("text")
-            .attr("x", 0)
-            .attr("y", 60)
-            .text("Zoom in/out with mouse wheel.")
-            .attr("font-size", "12px");
-
-        note.append("text")
-            .attr("x", 0)
-            .attr("y", 80)
-            .text("Pan by dragging the mouse.")
-            .attr("font-size", "12px");
-        
-            zoomTo([root.x, root.y, root.r * 2]);
-        
-            function zoomTo(v) {
-                const k = width / v[2];
-        
-                view = v;
-        
-                label.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
-                     .attr("font-size", d => Math.min(2 * d.r * k / (d.data.name.length), d.children ? 10 : 8) + "px");
-        
-                node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
-                    .attr("r", d => d.r * k);
+                legend.append("text")
+                    .attr("x", 0)
+                    .attr("y", -10)
+                    .text("Ratings")
+                    .attr("font-size", "14px")
+                    .attr("font-weight", "bold");
+                
+                    zoomTo([root.x, root.y, root.r * 2]);
+                
+                    function zoomTo(v) {
+                        const k = width / v[2];
+                
+                        view = v;
+                
+                        label.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
+                            .attr("font-size", d => Math.min(2 * d.r * k / (d.data.name.length), d.children ? 10 : 8) + "px");
+                
+                        node.attr("transform", d => `translate(${(d.x - v[0]) * k},${(d.y - v[1]) * k})`)
+                            .attr("r", d => d.r * k);
+                    }
+            
+                function zoom(event, d) {
+                    const focus0 = focus;
+                    focus = d;
+            
+                    const transition = svg.transition()
+                        .duration(event.altKey ? 7500 : 750)
+                        .tween("zoom", d => {
+                            const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
+                            return t => zoomTo(i(t));
+                        });
+            
+                    label
+                        .filter(function(d) { return d.parent === focus || this.style.display === "inline"; })
+                        .transition(transition)
+                        .style("fill-opacity", d => d.parent === focus || !d.children ? 1 : 0)
+                        .on("start", function(d) { if (d.parent === focus || !d.children) this.style.display = "inline"; })
+                        .on("end", function(d) { if (d.parent !== focus && d.children) this.style.display = "none"; });
+                }
+            
+                function showTooltip(event, d) {
+                    if (!d.children) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                        tooltip.html(`<strong>${d.data.title}</strong><br>
+                                    Genre: ${d.data.genre}<br>
+                                    Description: ${d.data.description}`)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    }
+                }
+            
+                function hideTooltip() {
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                }
             }
-        
-            function zoom(event, d) {
-                const focus0 = focus;
-                focus = d;
-        
-                const transition = svg.transition()
-                    .duration(event.altKey ? 7500 : 750)
-                    .tween("zoom", d => {
-                        const i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2]);
-                        return t => zoomTo(i(t));
+            
+            function processRatingData(data) {
+                const ratingHierarchy = { name: "Ratings", children: [] };
+                const ratingMap = new Map();
+            
+                data.forEach(item => {
+                    const rating = item.maturity_rating;
+                    if (!ratingMap.has(rating)) {
+                        ratingMap.set(rating, { name: rating, children: [] });
+                        ratingHierarchy.children.push(ratingMap.get(rating));
+                    }
+            
+                    ratingMap.get(rating).children.push({
+                        name: item.names,
+                        title: item.names,
+                        genre: item.genre,
+                        description: item.description,
+                        value: 1
                     });
-        
-                label
-                    .filter(function(d) { return d.parent === focus || this.style.display === "inline"; })
-                    .transition(transition)
-                    .style("fill-opacity", d => d.parent === focus || !d.children ? 1 : 0)
-                    .on("start", function(d) { if (d.parent === focus || !d.children) this.style.display = "inline"; })
-                    .on("end", function(d) { if (d.parent !== focus && d.children) this.style.display = "none"; });
+                });
+            
+                return ratingHierarchy;
             }
-        
-            function showTooltip(event, d) {
-                if (!d.children) {
+
+            function renderGenreSunburst(container, data) {
+                const width = 600;
+                const height = 600;
+                const radius = Math.min(width, height) / 2;
+
+                const svg = container.append("svg")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .append("g")
+                    .attr("transform", `translate(${width / 2},${height / 2})`);
+
+                const partition = d3.partition()
+                    .size([2 * Math.PI, radius]);
+
+                const root = d3.hierarchy({ children: processGenreData(data) })
+                    .sum(d => d.value);
+
+                const color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, root.children.length + 1));
+
+                partition(root);
+
+                const arc = d3.arc()
+                    .startAngle(d => d.x0)
+                    .endAngle(d => d.x1)
+                    .innerRadius(d => d.y0)
+                    .outerRadius(d => d.y1);
+
+                svg.selectAll("path")
+                    .data(root.descendants())
+                    .enter()
+                    .append("path")
+                    .attr("d", arc)
+                    .style("fill", d => color(d.data.name))
+                    .style("opacity", 0.8)
+                    .on("mouseover", (event, d) => {
+                        d3.select(event.currentTarget).style("opacity", 1);
+                        showTooltip(event, d);
+                    })
+                    .on("mouseout", (event, d) => {
+                        d3.select(event.currentTarget).style("opacity", 0.8);
+                        hideTooltip();
+                    });
+
+                svg.selectAll("text")
+                    .data(root.descendants().filter(d => d.depth && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03))
+                    .enter()
+                    .append("text")
+                    .attr("transform", d => {
+                        const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
+                        const y = (d.y0 + d.y1) / 2;
+                        return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
+                    })
+                    .attr("dy", "0.35em")
+                    .text(d => d.data.name);
+
+                // Add annotations
+                const annotations = [
+                    {
+                        note: {
+                            label: "Dramas are the most common genre",
+                            title: "Genre Distribution"
+                        },
+                        x: 0,
+                        y: -radius / 2,
+                        dy: -50,
+                        dx: 50
+                    }
+                ];
+
+                const makeAnnotations = d3.annotation()
+                    .annotations(annotations);
+
+                svg.append("g")
+                    .call(makeAnnotations);
+
+                // Tooltip
+                const tooltip = container.append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0);
+
+                function showTooltip(event, d) {
                     tooltip.transition()
                         .duration(200)
                         .style("opacity", .9);
-                    tooltip.html(`<strong>${d.data.title}</strong><br>
-                                  Genre: ${d.data.genre}<br>
-                                  Description: ${d.data.description}`)
-                        .style("left", (event.pageX + 10) + "px")
+                    tooltip.html(`${d.data.name}<br>${d.value} titles`)
+                        .style("left", (event.pageX) + "px")
                         .style("top", (event.pageY - 28) + "px");
                 }
-            }
-        
-            function hideTooltip() {
-                tooltip.transition()
-                    .duration(500)
-                    .style("opacity", 0);
-            }
-        }
-        
-        function processRatingData(data) {
-            const ratingHierarchy = { name: "Ratings", children: [] };
-            const ratingMap = new Map();
-        
-            data.forEach(item => {
-                const rating = item.maturity_rating;
-                if (!ratingMap.has(rating)) {
-                    ratingMap.set(rating, { name: rating, children: [] });
-                    ratingHierarchy.children.push(ratingMap.get(rating));
+
+                function hideTooltip() {
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
                 }
-        
-                ratingMap.get(rating).children.push({
-                    name: item.names,
-                    title: item.names,
-                    genre: item.genre,
-                    description: item.description,
-                    value: 1
-                });
-            });
-        
-            return ratingHierarchy;
-        }
-
-        function renderGenreSunburst(container, data) {
-            const width = 600;
-            const height = 600;
-            const radius = Math.min(width, height) / 2;
-
-            const svg = container.append("svg")
-                .attr("width", width)
-                .attr("height", height)
-                .append("g")
-                .attr("transform", `translate(${width / 2},${height / 2})`);
-
-            const partition = d3.partition()
-                .size([2 * Math.PI, radius]);
-
-            const root = d3.hierarchy({ children: processGenreData(data) })
-                .sum(d => d.value);
-
-            const color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, root.children.length + 1));
-
-            partition(root);
-
-            const arc = d3.arc()
-                .startAngle(d => d.x0)
-                .endAngle(d => d.x1)
-                .innerRadius(d => d.y0)
-                .outerRadius(d => d.y1);
-
-            svg.selectAll("path")
-                .data(root.descendants())
-                .enter()
-                .append("path")
-                .attr("d", arc)
-                .style("fill", d => color(d.data.name))
-                .style("opacity", 0.8)
-                .on("mouseover", (event, d) => {
-                    d3.select(event.currentTarget).style("opacity", 1);
-                    showTooltip(event, d);
-                })
-                .on("mouseout", (event, d) => {
-                    d3.select(event.currentTarget).style("opacity", 0.8);
-                    hideTooltip();
-                });
-
-            svg.selectAll("text")
-                .data(root.descendants().filter(d => d.depth && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03))
-                .enter()
-                .append("text")
-                .attr("transform", d => {
-                    const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
-                    const y = (d.y0 + d.y1) / 2;
-                    return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
-                })
-                .attr("dy", "0.35em")
-                .text(d => d.data.name);
-
-            // Add annotations
-            const annotations = [
-                {
-                    note: {
-                        label: "Dramas are the most common genre",
-                        title: "Genre Distribution"
-                    },
-                    x: 0,
-                    y: -radius / 2,
-                    dy: -50,
-                    dx: 50
-                }
-            ];
-
-            const makeAnnotations = d3.annotation()
-                .annotations(annotations);
-
-            svg.append("g")
-                .call(makeAnnotations);
-
-            // Tooltip
-            const tooltip = container.append("div")
-                .attr("class", "tooltip")
-                .style("opacity", 0);
-
-            function showTooltip(event, d) {
-                tooltip.transition()
-                    .duration(200)
-                    .style("opacity", .9);
-                tooltip.html(`${d.data.name}<br>${d.value} titles`)
-                    .style("left", (event.pageX) + "px")
-                    .style("top", (event.pageY - 28) + "px");
             }
 
-            function hideTooltip() {
-                tooltip.transition()
-                    .duration(500)
-                    .style("opacity", 0);
-            }
-        }
-
-        function processGenreData(data) {
-            const genreCounts = {};
-            data.forEach(item => {
-                const genres = JSON.parse(item.genre.replace(/'/g, '"'));
-                genres.forEach(genre => {
-                    if (!genreCounts[genre]) {
-                        genreCounts[genre] = 0;
-                    }
-                    genreCounts[genre]++;
+            function processGenreData(data) {
+                const genreCounts = {};
+                data.forEach(item => {
+                    const genres = JSON.parse(item.genre.replace(/'/g, '"'));
+                    genres.forEach(genre => {
+                        if (!genreCounts[genre]) {
+                            genreCounts[genre] = 0;
+                        }
+                        genreCounts[genre]++;
+                    });
                 });
-            });
 
-            return Object.entries(genreCounts).map(([name, value]) => ({ name, value }));
-        }
+                return Object.entries(genreCounts).map(([name, value]) => ({ name, value }));
+            }
     </script>
 </body>
 </html>
