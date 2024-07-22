@@ -273,15 +273,34 @@
                     .text(`Genre Groups in ${year}`);
             }
         
-            // Initial chart render
-            updateChart(yearsExtent[1]);
-        
-            // Update chart when slider changes
-            slider.on("input", function() {
-                const selectedYear = +this.value;
-                yearDisplay.text(selectedYear);
-                updateChart(selectedYear);
-            });
+           // Function to get the previously set year from localStorage
+            function getPreviousYear() {
+                const savedYear = localStorage.getItem('selectedYear');
+                return savedYear ? parseInt(savedYear) : yearsExtent[1];
+            }
+
+            // Function to save the selected year to localStorage
+            function saveSelectedYear(year) {
+                localStorage.setItem('selectedYear', year.toString());
+            }
+
+        // Get the previously set year or use the most recent year as default
+        const initialYear = getPreviousYear();
+
+        // Initial chart render
+        updateChart(initialYear);
+
+        // Set the slider and year display to the initial year
+        slider.property('value', initialYear);
+        yearDisplay.text(initialYear);
+
+        // Update chart when slider changes
+        slider.on("input", function() {
+            const selectedYear = +this.value;
+            yearDisplay.text(selectedYear);
+            updateChart(selectedYear);
+            saveSelectedYear(selectedYear);
+        });
         
     
 
@@ -449,14 +468,32 @@
                     .text(d => d);
             }
         
+            function getPreviousYear() {
+                const savedYear = localStorage.getItem('selectedYear');
+                return savedYear ? parseInt(savedYear) : yearsExtent[1];
+            }
+            
+            // Function to save the selected year to localStorage
+            function saveSelectedYear(year) {
+                localStorage.setItem('selectedYear', year.toString());
+            }
+            
+            // Get the previously set year or use the most recent year as default
+            const initialYear = getPreviousYear();
+            
             // Initial chart render
-            updateChart(yearsExtent[1]);
-        
+            updateChart(initialYear);
+            
+            // Set the slider and year display to the initial year
+            slider.property('value', initialYear);
+            yearDisplay.text(initialYear);
+            
             // Update chart when slider changes
             slider.on("input", function() {
                 const selectedYear = +this.value;
                 yearDisplay.text(selectedYear);
                 updateChart(selectedYear);
+                saveSelectedYear(selectedYear);
             });
         }
         
